@@ -1,5 +1,0 @@
-web/node_modules
-web/.next
-**/*_test.go
-deployments/.env
-.git
