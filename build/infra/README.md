@@ -27,7 +27,7 @@ docker compose ps
 ## Register the CI runner
 
 ```bash
-scripts/register-runner.sh <glrt-token>
+build/scripts/register-runner.sh <glrt-token>
 ```
 
 ## Tear down
