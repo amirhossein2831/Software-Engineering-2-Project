@@ -1,0 +1,14 @@
+# Go build artifacts
+/bin/
+*.exe
+*.test
+*.out
+coverage.html
+
+# Env files (keep .env.example)
+.env
+deploy/.env
+
+# Node / Next.js
+node_modules/
+.next/
