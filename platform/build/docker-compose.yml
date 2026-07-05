@@ -1,7 +1,7 @@
-# Local development infrastructure + services for the ticketing platform.
-# One command, hermetic: `docker compose -f deployments/docker-compose.yml up -d`.
+# Shared infrastructure + services for the ticketing platform.
+# One command, hermetic: `cd platform/build && docker compose up -d`.
 #
-# Infra profile services (postgres, redis, kafka, mailhog) always start.
+# Shared infra (postgres, redis, kafka, mailhog) is used by every service.
 # Application services (iam, ...) are added as they are implemented.
 
 name: ticketing

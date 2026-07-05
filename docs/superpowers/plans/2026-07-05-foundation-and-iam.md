@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the Go monorepo foundation (shared packages + local infra via Docker Compose) and deliver a fully working, tested **Identity & Access (IAM)** service: register, login, JWT refresh, logout.
 
-**Architecture:** Single Go module (`ticketing`) rooted at `platform/`, following the **golang-standards/project-layout** convention: shared libraries in `pkg/`, per-service private code in `internal/<service>/`, executables in `cmd/<service>/`, protobuf/API defs in `api/`, container packaging in `build/package/<service>/`, orchestration in `deployments/`, helper scripts in `scripts/`, and the frontend in `web/`. Direct GORM domain=DB mapping per the design. IAM exposes REST via Fiber v3 and persists to its own Postgres database. Infra (Postgres, Redis, Kafka KRaft, Mailhog) runs from one `deployments/docker-compose.yml`.
+**Architecture:** Single Go module (`ticketing`) rooted at `platform/`, following the **golang-standards/project-layout** convention: shared libraries in `pkg/`, per-service private code in `internal/<service>/`, executables in `cmd/<service>/`, protobuf/API defs in `api/`, container packaging in `build/package/<service>/`, orchestration in `build/`, helper scripts in `scripts/`, and the frontend in `web/`. Direct GORM domain=DB mapping per the design. IAM exposes REST via Fiber v3 and persists to its own Postgres database. Infra (Postgres, Redis, Kafka KRaft, Mailhog) runs from one `build/docker-compose.yml`.
 
 **Repository layout (golang-standards/project-layout):**
 ```
@@ -14,7 +14,7 @@ platform/
   pkg/...                      # shared libs (config, logger, database, jwtauth)
   api/proto/                   # gRPC/protobuf definitions
   build/package/<service>/     # Dockerfiles
-  deployments/                 # docker-compose, k8s manifests, postgres init
+  build/                 # docker-compose, k8s manifests, postgres init
   scripts/                     # smoke tests, helpers
   web/                         # Next.js frontend
 ```
@@ -85,15 +85,15 @@ platform/
 ### Task 4: Local infra via Docker Compose
 
 **Files:**
-- Create: `deployments/docker-compose.yml`
-- Create: `deployments/.env.example`
-- Create: `deployments/README.md`
+- Create: `build/docker-compose.yml`
+- Create: `build/.env.example`
+- Create: `build/README.md`
 
-Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kafka` (KRaft, single node), `mailhog`. Add an init script `deployments/postgres/init-databases.sh` creating `iam`, `catalog`, `reservation`, `checkout`, `ticketing`, `notification`, `analytics` databases.
+Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kafka` (KRaft, single node), `mailhog`. Add an init script `build/postgres/init-databases.sh` creating `iam`, `catalog`, `reservation`, `checkout`, `ticketing`, `notification`, `analytics` databases.
 
 - [ ] Step 1: Write `docker-compose.yml` with the four infra services + healthchecks + named volumes + `ci-net`-style bridge network.
 - [ ] Step 2: Write `postgres/init-databases.sh` (loops over DB names, `createdb`).
-- [ ] Step 3: `docker compose -f deployments/docker-compose.yml up -d postgres redis kafka mailhog` → verify all healthy (`docker compose ps`).
+- [ ] Step 3: `docker compose -f build/docker-compose.yml up -d postgres redis kafka mailhog` → verify all healthy (`docker compose ps`).
 - [ ] Step 4: Commit `chore(deploy): add local infra compose (postgres/redis/kafka/mailhog)`.
 
 ### Task 5: IAM domain models
@@ -215,7 +215,7 @@ Test uses `app.Test(httptest.NewRequest(...))` (Fiber's built-in test harness) w
 **Files:**
 - Create: `cmd/iam/main.go`
 - Create: `build/package/iam/Dockerfile`
-- Modify: `deployments/docker-compose.yml` (add `iam` service)
+- Modify: `build/docker-compose.yml` (add `iam` service)
 
 - [ ] Step 1: `main.go` — load config, open DB, `AutoMigrate(User, RefreshToken)`, build jwt manager/repo/service/router, `app.Listen(:PORT)`.
 - [ ] Step 2: Multi-stage `Dockerfile` (build static binary → distroless/alpine).

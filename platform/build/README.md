@@ -1,12 +1,13 @@
-# Local Infrastructure
+# Build & Local Deployment
 
-One-command local stack for the ticketing platform.
+Shared infrastructure (postgres, redis, kafka, mailhog) plus the platform
+services. Per-service Dockerfiles live under `build/package/<service>/`.
 
-## Start infra
+## Start the stack
 
 ```bash
-cd platform/deployments
-docker compose up -d            # postgres, redis, kafka (KRaft), mailhog
+cd platform/build
+docker compose up -d            # postgres, redis, kafka (KRaft), mailhog, iam
 docker compose ps               # verify all healthy
 ```
 
