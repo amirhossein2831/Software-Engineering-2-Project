@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+      - ../../scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ticketing}"]
       interval: 5s
@@ -77,6 +77,40 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8081:8081"
+    networks: [ticketing-net]
+
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    restart: always
+    hostname: gitlab.local
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2222:22"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.local'
+        gitlab_rails['initial_root_password'] = 'ChangeMe_Str0ngPass!'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+    volumes:
+      - ../config:/etc/gitlab
+      - ../logs:/var/log/gitlab
+      - ../data:/var/opt/gitlab
+    networks:
+      ticketing-net:
+        aliases:
+          - gitlab.local
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: always
+    depends_on:
+      - gitlab
+    volumes:
+      - ../runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
     networks: [ticketing-net]
 
 volumes:

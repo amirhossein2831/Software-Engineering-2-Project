@@ -1,8 +1,9 @@
 # Shared Infrastructure
 
-Shared services used by every microservice: Postgres, Redis, Kafka (KRaft), Mailhog.
-Each microservice lives in its own top-level directory with its own Dockerfile and
-is wired into this compose file.
+Shared services used by every microservice: Postgres, Redis, Kafka (KRaft), Mailhog,
+plus the self-hosted GitLab + runner for CI. Each microservice lives in its own
+top-level directory with its own Dockerfile and is wired into this compose file.
+Helper scripts live in the top-level `scripts/` folder.
 
 ## Start the stack
 
@@ -20,6 +21,14 @@ docker compose ps
 | Redis    | `localhost:6379`    | seat locks, waiting-room queue                    |
 | Kafka    | `localhost:29092`   | host listener; in-network brokers use `kafka:9092`|
 | Mailhog  | SMTP `localhost:1025`, UI `http://localhost:8025` | catches outbound email          |
+| GitLab   | `http://gitlab.local` (ports 80/443, SSH 2222)    | CI; data in `build/{config,data,logs}` |
+| Auth     | `http://localhost:8081`                           | register / login / JWT          |
+
+## Register the CI runner
+
+```bash
+scripts/register-runner.sh <glrt-token>
+```
 
 ## Tear down
 
