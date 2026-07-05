@@ -4,7 +4,20 @@
 
 **Goal:** Stand up the Go monorepo foundation (shared packages + local infra via Docker Compose) and deliver a fully working, tested **Identity & Access (IAM)** service: register, login, JWT refresh, logout.
 
-**Architecture:** Single Go module at repo root (`ticketing`) with `pkg/` for shared libraries and `services/<name>/` per microservice (direct GORM domain=DB mapping, per the design). IAM exposes REST via Fiber v3 and persists to its own Postgres database. Infra (Postgres, Redis, Kafka KRaft, Mailhog) runs from one `deploy/docker-compose.yml`.
+**Architecture:** Single Go module (`ticketing`) rooted at `platform/`, following the **golang-standards/project-layout** convention: shared libraries in `pkg/`, per-service private code in `internal/<service>/`, executables in `cmd/<service>/`, protobuf/API defs in `api/`, container packaging in `build/package/<service>/`, orchestration in `deployments/`, helper scripts in `scripts/`, and the frontend in `web/`. Direct GORM domain=DB mapping per the design. IAM exposes REST via Fiber v3 and persists to its own Postgres database. Infra (Postgres, Redis, Kafka KRaft, Mailhog) runs from one `deployments/docker-compose.yml`.
+
+**Repository layout (golang-standards/project-layout):**
+```
+platform/
+  cmd/<service>/main.go        # executables
+  internal/<service>/...       # private per-service code (model, repository, service, handler)
+  pkg/...                      # shared libs (config, logger, database, jwtauth)
+  api/proto/                   # gRPC/protobuf definitions
+  build/package/<service>/     # Dockerfiles
+  deployments/                 # docker-compose, k8s manifests, postgres init
+  scripts/                     # smoke tests, helpers
+  web/                         # Next.js frontend
+```
 
 **Tech Stack:** Go 1.26, Fiber v3 (`github.com/gofiber/fiber/v3`), GORM (`gorm.io/gorm` + `gorm.io/driver/postgres`), `golang-jwt/jwt/v5`, `golang.org/x/crypto/bcrypt`, Docker Compose.
 
@@ -72,23 +85,23 @@
 ### Task 4: Local infra via Docker Compose
 
 **Files:**
-- Create: `deploy/docker-compose.yml`
-- Create: `deploy/.env.example`
-- Create: `deploy/README.md`
+- Create: `deployments/docker-compose.yml`
+- Create: `deployments/.env.example`
+- Create: `deployments/README.md`
 
-Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kafka` (KRaft, single node), `mailhog`. Add an init script `deploy/postgres/init-databases.sh` creating `iam`, `catalog`, `reservation`, `checkout`, `ticketing`, `notification`, `analytics` databases.
+Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kafka` (KRaft, single node), `mailhog`. Add an init script `deployments/postgres/init-databases.sh` creating `iam`, `catalog`, `reservation`, `checkout`, `ticketing`, `notification`, `analytics` databases.
 
 - [ ] Step 1: Write `docker-compose.yml` with the four infra services + healthchecks + named volumes + `ci-net`-style bridge network.
 - [ ] Step 2: Write `postgres/init-databases.sh` (loops over DB names, `createdb`).
-- [ ] Step 3: `docker compose -f deploy/docker-compose.yml up -d postgres redis kafka mailhog` → verify all healthy (`docker compose ps`).
+- [ ] Step 3: `docker compose -f deployments/docker-compose.yml up -d postgres redis kafka mailhog` → verify all healthy (`docker compose ps`).
 - [ ] Step 4: Commit `chore(deploy): add local infra compose (postgres/redis/kafka/mailhog)`.
 
 ### Task 5: IAM domain models
 
 **Files:**
-- Create: `services/iam/internal/model/user.go`
-- Create: `services/iam/internal/model/refresh_token.go`
-- Test: `services/iam/internal/model/user_test.go`
+- Create: `internal/iam/model/user.go`
+- Create: `internal/iam/model/refresh_token.go`
+- Test: `internal/iam/model/user_test.go`
 
 **Interfaces produced:**
 - `model.User{ ID uuid; Email string; PasswordHash string; Role Role; CreatedAt }` with `Role` enum (`buyer|organizer|admin`) and `TableName() "users"`.
@@ -104,8 +117,8 @@ Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kaf
 ### Task 6: Password hashing
 
 **Files:**
-- Create: `services/iam/internal/auth/password.go`
-- Test: `services/iam/internal/auth/password_test.go`
+- Create: `internal/iam/auth/password.go`
+- Test: `internal/iam/auth/password_test.go`
 
 **Interfaces produced:**
 - `auth.HashPassword(plain string) (string, error)`
@@ -138,8 +151,8 @@ Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kaf
 ### Task 8: IAM repository
 
 **Files:**
-- Create: `services/iam/internal/repository/user_repo.go`
-- Test: `services/iam/internal/repository/user_repo_test.go`
+- Create: `internal/iam/repository/user_repo.go`
+- Test: `internal/iam/repository/user_repo_test.go`
 
 **Interfaces produced:**
 - `repository.NewUserRepo(db *gorm.DB) *UserRepo`
@@ -158,8 +171,8 @@ Infra services: `postgres` (16, multiple DBs via init script), `redis` (7), `kaf
 ### Task 9: IAM auth service (use cases)
 
 **Files:**
-- Create: `services/iam/internal/service/auth_service.go`
-- Test: `services/iam/internal/service/auth_service_test.go`
+- Create: `internal/iam/service/auth_service.go`
+- Test: `internal/iam/service/auth_service_test.go`
 
 **Interfaces produced:**
 - `service.NewAuthService(repo, jwt *jwtauth.Manager, refreshTTL) *AuthService`
@@ -180,9 +193,9 @@ Test uses a fake repo (in-memory) implementing a `UserStore` interface the servi
 ### Task 10: IAM HTTP handlers (Fiber v3)
 
 **Files:**
-- Create: `services/iam/internal/handler/auth_handler.go`
-- Create: `services/iam/internal/handler/router.go`
-- Test: `services/iam/internal/handler/auth_handler_test.go`
+- Create: `internal/iam/handler/auth_handler.go`
+- Create: `internal/iam/handler/router.go`
+- Test: `internal/iam/handler/auth_handler_test.go`
 
 **Interfaces produced:**
 - `handler.NewRouter(app *fiber.App, svc *service.AuthService)` registering:
@@ -200,9 +213,9 @@ Test uses `app.Test(httptest.NewRequest(...))` (Fiber's built-in test harness) w
 ### Task 11: IAM main + Dockerfile + compose wiring
 
 **Files:**
-- Create: `services/iam/cmd/iam/main.go`
-- Create: `services/iam/Dockerfile`
-- Modify: `deploy/docker-compose.yml` (add `iam` service)
+- Create: `cmd/iam/main.go`
+- Create: `build/package/iam/Dockerfile`
+- Modify: `deployments/docker-compose.yml` (add `iam` service)
 
 - [ ] Step 1: `main.go` — load config, open DB, `AutoMigrate(User, RefreshToken)`, build jwt manager/repo/service/router, `app.Listen(:PORT)`.
 - [ ] Step 2: Multi-stage `Dockerfile` (build static binary → distroless/alpine).
@@ -213,7 +226,7 @@ Test uses `app.Test(httptest.NewRequest(...))` (Fiber's built-in test harness) w
 ### Task 12: End-to-end smoke check
 
 **Files:**
-- Create: `services/iam/README.md` (run + curl examples)
+- Create: `internal/iam/README.md` (run + curl examples)
 - Create: `scripts/smoke-iam.sh` (register → login → refresh → logout via curl, assert status codes)
 
 - [ ] Step 1: Write `smoke-iam.sh` (set -e; curl each endpoint; grep expected status).
