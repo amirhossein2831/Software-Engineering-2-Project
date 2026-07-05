@@ -1,4 +1,1 @@
-config/
-logs/
-data/
-runner-config/
+infra/gitlab/
