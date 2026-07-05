@@ -1,0 +1,99 @@
+# =============================================================================
+# GitLab CI/CD pipeline
+# Monorepo: each service lives in its own top-level directory.
+# For now only `test-service-go` is wired up. To add another service later,
+# copy the "test-service-go: ..." job blocks and change the SERVICE_DIR value.
+# =============================================================================
+
+stages:
+  - lint
+  - build
+  - test
+  - package
+
+# ----- Shared config reused by every Go job (YAML anchor) --------------------
+.go-base: &go-base
+  image: golang:1.22
+  # Cache downloaded modules between jobs/pipelines so we don't re-fetch each run
+  variables:
+    GOPATH: "$CI_PROJECT_DIR/.go"
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-go-mod"
+    paths:
+      - .go/pkg/mod/
+  before_script:
+    - cd "$SERVICE_DIR"
+
+# =============================================================================
+# test-service-go
+# =============================================================================
+
+# --- Lint: formatting + static analysis ---
+lint:test-service-go:
+  <<: *go-base
+  stage: lint
+  variables:
+    SERVICE_DIR: test-service-go
+  script:
+    # Fail if any file isn't gofmt-clean (prints the offending files)
+    - test -z "$(gofmt -l .)" || (echo "Run 'gofmt -w .' — these files are not formatted:" && gofmt -l . && exit 1)
+    - go vet ./...
+  rules:
+    # Only run when this service's files change (keeps the monorepo fast)
+    - changes:
+        - test-service-go/**/*
+
+# --- Build: make sure it compiles ---
+build:test-service-go:
+  <<: *go-base
+  stage: build
+  variables:
+    SERVICE_DIR: test-service-go
+  script:
+    - go build ./...
+  rules:
+    - changes:
+        - test-service-go/**/*
+
+# --- Test: run tests with coverage + JUnit report for the GitLab UI ---
+test:test-service-go:
+  <<: *go-base
+  stage: test
+  variables:
+    SERVICE_DIR: test-service-go
+  script:
+    - go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+    - go tool cover -func=coverage.out
+    # Turn the profile into an HTML artifact you can open from the pipeline
+    - go tool cover -html=coverage.out -o coverage.html
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - test-service-go/coverage.html
+    expire_in: 1 week
+  rules:
+    - changes:
+        - test-service-go/**/*
+
+# --- Package: build a Docker image (runs only on the default branch) ---
+# Requires a Dockerfile in test-service-go/. Comment this job out until you
+# add one, or it will fail.
+package:test-service-go:
+  stage: package
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    SERVICE_DIR: test-service-go
+    IMAGE: "$CI_REGISTRY_IMAGE/test-service-go:$CI_COMMIT_SHORT_SHA"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -t "$IMAGE" "$SERVICE_DIR"
+    - docker push "$IMAGE"
+  rules:
+    # Only package on the default branch, and only when the service changed
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - test-service-go/**/*
+
