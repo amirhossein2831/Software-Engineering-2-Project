@@ -67,6 +67,24 @@ services:
       - "8025:8025"   # web UI
     networks: [ticketing-net]
 
+  iam:
+    build:
+      context: ..
+      dockerfile: build/package/iam/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ticketing}:${POSTGRES_PASSWORD:-ticketing}@postgres:5432/iam?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-in-prod}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
+      IAM_PORT: "8081"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8081:8081"
+    networks: [ticketing-net]
+
 volumes:
   pgdata:
 
