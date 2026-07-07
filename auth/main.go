@@ -7,6 +7,7 @@ import (
 
 	"auth/internal/config"
 	"auth/internal/database"
+	"auth/internal/events"
 	"auth/internal/handler"
 	"auth/internal/jwtauth"
 	"auth/internal/logger"
@@ -28,8 +29,11 @@ func main() {
 	refreshTTL := parseDuration(config.Get("REFRESH_TOKEN_TTL", "720h"), 720*time.Hour)
 
 	jwtMgr := jwtauth.NewManager(config.MustGet("JWT_SECRET"), accessTTL, refreshTTL)
+	pub := events.NewPublisher(config.Get("KAFKA_BROKERS", ""))
+	defer pub.Close()
+
 	repo := repository.NewUserRepo(db)
-	svc := service.NewAuthService(repo, jwtMgr)
+	svc := service.NewAuthService(repo, jwtMgr, pub)
 
 	app := fiber.New()
 	handler.NewRouter(app, svc)

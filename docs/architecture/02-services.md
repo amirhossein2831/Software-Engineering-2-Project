@@ -45,12 +45,33 @@ RefreshToken{ ID, UserID(fk), TokenHash, ExpiresAt, RevokedAt }
 - `POST /auth/login` → returns access (short-lived) + refresh token
 - `POST /auth/refresh` → rotate access token
 - `POST /auth/logout` → revoke refresh token
+- **Admin only:** `GET /admin/users` → list users; `POST /admin/users/{id}/role` → change a user's role (e.g. promote buyer → organizer)
 
 **Internal API (gRPC):**
 - `VerifyToken(access) → {user_id, role}` (used by Gateway; can also be a local JWT verify with IAM's public key)
 - `GetUser(user_id) → User`
 
 **Events produced:** `user.registered`.
+
+### Roles & authorization (buyer / organizer / admin)
+
+The three roles are distinct capability tiers, enforced at the Gateway (which
+injects the verified `user_id` + `role` as `X-User-Id` / `X-User-Role` headers)
+and defended in-depth by the owning service:
+
+| Capability | buyer | organizer | admin |
+|---|---|---|---|
+| Browse/search events, hold seats, checkout, view own tickets/orders | ✓ | ✓ | ✓ |
+| Create/manage venues, events, pricing, publish | | **own only** | ✓ (any) |
+| View analytics dashboards | | **own events** | ✓ (platform-wide) |
+| Moderate any event (unpublish others') | | | ✓ |
+| Manage users (list, change roles) | | | ✓ |
+
+**organizer vs admin:** an organizer is scoped to resources they own
+(`OrganizerID == user_id`); an admin is unscoped — they can act on any
+organizer's resources, moderate content, and manage the user directory. Only
+admin has user-management and cross-tenant reach; everything an organizer can do,
+an admin can do platform-wide.
 
 ---
 

@@ -1,5 +1,7 @@
 FROM golang:1.26 AS build
 WORKDIR /src
+ARG GOPROXY=https://goproxy.cn
+ENV GOPROXY=${GOPROXY} GOSUMDB=off
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .

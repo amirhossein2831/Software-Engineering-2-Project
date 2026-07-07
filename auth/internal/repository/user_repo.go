@@ -55,6 +55,25 @@ func (r *UserRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.User, err
 	return &u, nil
 }
 
+func (r *UserRepo) ListUsers(ctx context.Context) ([]model.User, error) {
+	var users []model.User
+	err := r.db.WithContext(ctx).Order("created_at ASC").Find(&users).Error
+	return users, err
+}
+
+func (r *UserRepo) UpdateRole(ctx context.Context, id uuid.UUID, role model.Role) error {
+	res := r.db.WithContext(ctx).Model(&model.User{}).
+		Where("id = ?", id).
+		Update("role", role)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) SaveRefresh(ctx context.Context, t *model.RefreshToken) error {
 	return r.db.WithContext(ctx).Create(t).Error
 }

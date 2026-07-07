@@ -17,4 +17,8 @@ func NewRouter(app *fiber.App, svc *service.AuthService) {
 	g.Post("/login", h.Login)
 	g.Post("/refresh", h.Refresh)
 	g.Post("/logout", h.Logout)
+
+	a := app.Group("/admin")
+	a.Get("/users", h.ListUsers)
+	a.Post("/users/:id/role", h.SetRole)
 }
