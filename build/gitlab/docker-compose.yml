@@ -1,3 +1,5 @@
+name: gitlab-ci
+
 services:
   gitlab:
     image: gitlab/gitlab-ce:latest
@@ -14,11 +16,11 @@ services:
         gitlab_rails['initial_root_password'] = 'ChangeMe_Str0ngPass!'
         gitlab_rails['gitlab_shell_ssh_port'] = 2222
     volumes:
-      - ./config:/etc/gitlab
-      - ./logs:/var/log/gitlab
-      - ./data:/var/opt/gitlab
+      - ./volume/config:/etc/gitlab
+      - ./volume/logs:/var/log/gitlab
+      - ./volume/data:/var/opt/gitlab
     networks:
-      ci-net:
+      gitlab-net:
         aliases:
           - gitlab.local
 
@@ -29,11 +31,10 @@ services:
     depends_on:
       - gitlab
     volumes:
-      - ./runner-config:/etc/gitlab-runner
+      - ./volume/runner-config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - ci-net
+    networks: [gitlab-net]
 
 networks:
-  ci-net:
+  gitlab-net:
     driver: bridge

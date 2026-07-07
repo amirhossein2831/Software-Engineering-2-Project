@@ -1,4 +1,2 @@
-config/
-logs/
-data/
-runner-config/
+gitlab/volume/
+config/.env
