@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/utils";
 export function EventCard({ event }: { event: Event }) {
   return (
     <Link href={`/events/${event.id}`} className="group block">
-      <Card className="h-full overflow-hidden transition-shadow group-hover:shadow-md">
+      <Card className="h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand/30 group-hover:bg-brand-soft/30 group-hover:shadow-md">
         <div className="flex h-32 items-center justify-center bg-gradient-to-br from-brand/90 to-indigo-400 text-brand-fg">
           <span className="text-3xl font-bold tracking-tight">
             {event.title.slice(0, 1).toUpperCase()}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -13,6 +14,7 @@ import (
 	"auth/internal/logger"
 	"auth/internal/model"
 	"auth/internal/repository"
+	"auth/internal/seed"
 	"auth/internal/service"
 )
 
@@ -33,6 +35,13 @@ func main() {
 	defer pub.Close()
 
 	repo := repository.NewUserRepo(db)
+
+	if res, err := seed.EnsureAdmins(context.Background(), repo, seed.Admins); err != nil {
+		log.Error("admin seed failed", "err", err)
+	} else if res.Created+res.Promoted > 0 {
+		log.Info("admin seed applied", "created", res.Created, "promoted", res.Promoted)
+	}
+
 	svc := service.NewAuthService(repo, jwtMgr, pub)
 
 	app := fiber.New()

@@ -17,5 +17,5 @@ func NewRouter(app *fiber.App, svc *service.ReservationService) {
 	app.Get("/holds/:id", h.GetHold)
 	app.Post("/holds/:id/commit", h.Commit)
 	app.Post("/holds/:id/release", h.Release)
-	app.Get("/events/:eventID/seats", h.SeatStates)
+	app.Get("/seatmap/:eventID", h.SeatStates)
 }

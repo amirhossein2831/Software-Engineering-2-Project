@@ -30,6 +30,7 @@ func main() {
 		{Prefix: "/admin", Target: authURL, Auth: true, Roles: []string{"admin"}},
 		{Prefix: "/events", Target: catalogURL, WriteRoles: organizerRoles},
 		{Prefix: "/venues", Target: catalogURL, WriteRoles: organizerRoles},
+		{Prefix: "/seatmap", Target: reservationURL},
 		{Prefix: "/holds", Target: reservationURL, Auth: true, Admission: true},
 		{Prefix: "/checkout", Target: checkoutURL, Auth: true, Admission: true},
 		{Prefix: "/orders", Target: checkoutURL, Auth: true},

@@ -16,10 +16,16 @@ func NewRouter(app *fiber.App, svc *service.CatalogService) {
 	app.Get("/events", h.ListEvents)
 	app.Get("/events/:id", h.GetEvent)
 	app.Post("/events", h.CreateEvent)
+	app.Patch("/events/:id", h.UpdateEvent)
+	app.Delete("/events/:id", h.DeleteEvent)
 	app.Post("/events/:id/publish", h.PublishEvent)
 	app.Post("/events/:id/pricing", h.SetPricing)
 
+	app.Get("/venues", h.ListVenues)
 	app.Post("/venues", h.CreateVenue)
 	app.Get("/venues/:id", h.GetVenue)
+	app.Patch("/venues/:id", h.UpdateVenue)
+	app.Delete("/venues/:id", h.DeleteVenue)
 	app.Post("/venues/:id/sectors", h.AddSector)
+	app.Delete("/venues/:id/sectors/:sectorId", h.DeleteSector)
 }
