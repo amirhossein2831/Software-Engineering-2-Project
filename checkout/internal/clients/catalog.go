@@ -67,11 +67,7 @@ func (c *CatalogClient) Price(ctx context.Context, eventID uuid.UUID, seatIDs []
 		if !ok {
 			return nil, fmt.Errorf("%w: seat %s not in event", ErrUpstream, sid)
 		}
-		price, ok := priceBySector[sectorID]
-		if !ok {
-			return nil, fmt.Errorf("%w: no pricing for sector %s", ErrUpstream, sectorID)
-		}
-		total += price
+		total += priceBySector[sectorID]
 	}
 	return &Quote{Amount: total, Currency: currency}, nil
 }

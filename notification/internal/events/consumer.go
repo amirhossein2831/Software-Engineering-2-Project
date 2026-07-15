@@ -2,6 +2,8 @@ package events
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"strings"
 
 	"github.com/segmentio/kafka-go"
@@ -17,13 +19,37 @@ func NewConsumer(brokers string, topics []string, group string) *Consumer {
 	if brokers == "" || len(topics) == 0 {
 		return &Consumer{}
 	}
+	brokerList := strings.Split(brokers, ",")
+	ensureTopics(brokerList, topics)
 	return &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers:     strings.Split(brokers, ","),
+			Brokers:     brokerList,
 			GroupTopics: topics,
 			GroupID:     group,
 		}),
 	}
+}
+
+func ensureTopics(brokers, topics []string) {
+	conn, err := kafka.Dial("tcp", brokers[0])
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	controller, err := conn.Controller()
+	if err != nil {
+		return
+	}
+	ctrl, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		return
+	}
+	defer ctrl.Close()
+	configs := make([]kafka.TopicConfig, 0, len(topics))
+	for _, t := range topics {
+		configs = append(configs, kafka.TopicConfig{Topic: t, NumPartitions: 1, ReplicationFactor: 1})
+	}
+	_ = ctrl.CreateTopics(configs...)
 }
 
 func (c *Consumer) Run(ctx context.Context, handle Handler) error {

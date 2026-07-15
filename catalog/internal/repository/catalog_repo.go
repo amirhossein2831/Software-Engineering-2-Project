@@ -13,8 +13,8 @@ import (
 var ErrNotFound = errors.New("not found")
 
 type EventFilter struct {
-	Genre    string
-	Location string
+	Genre         string
+	Location      string
 	OnlyPublished bool
 }
 
@@ -40,6 +40,57 @@ func (r *CatalogRepo) GetVenue(ctx context.Context, id uuid.UUID) (*model.Venue,
 		return nil, err
 	}
 	return &v, nil
+}
+
+func (r *CatalogRepo) ListVenues(ctx context.Context) ([]model.Venue, error) {
+	var venues []model.Venue
+	err := r.db.WithContext(ctx).Preload("Sectors").Order("created_at desc").Find(&venues).Error
+	return venues, err
+}
+
+func (r *CatalogRepo) UpdateVenue(ctx context.Context, id uuid.UUID, name, address string) error {
+	res := r.db.WithContext(ctx).Model(&model.Venue{}).Where("id = ?", id).
+		Updates(map[string]any{"name": name, "address": address})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *CatalogRepo) CountEventsByVenue(ctx context.Context, venueID uuid.UUID) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&model.Event{}).Where("venue_id = ?", venueID).Count(&n).Error
+	return n, err
+}
+
+func (r *CatalogRepo) DeleteVenue(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("venue_id = ?", id).Delete(&model.Sector{}).Error; err != nil {
+			return err
+		}
+		res := tx.Where("id = ?", id).Delete(&model.Venue{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+func (r *CatalogRepo) DeleteSector(ctx context.Context, venueID, sectorID uuid.UUID) error {
+	res := r.db.WithContext(ctx).Where("id = ? AND venue_id = ?", sectorID, venueID).Delete(&model.Sector{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *CatalogRepo) CreateSector(ctx context.Context, s *model.Sector) error {
@@ -89,6 +140,36 @@ func (r *CatalogRepo) UpdateEventStatus(ctx context.Context, id uuid.UUID, statu
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *CatalogRepo) UpdateEvent(ctx context.Context, id uuid.UUID, fields map[string]any) error {
+	res := r.db.WithContext(ctx).Model(&model.Event{}).Where("id = ?", id).Updates(fields)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *CatalogRepo) DeleteEvent(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("event_id = ?", id).Delete(&model.Seat{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("event_id = ?", id).Delete(&model.Pricing{}).Error; err != nil {
+			return err
+		}
+		res := tx.Where("id = ?", id).Delete(&model.Event{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
 }
 
 func (r *CatalogRepo) CreatePricing(ctx context.Context, p *model.Pricing) error {

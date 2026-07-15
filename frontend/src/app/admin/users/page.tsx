@@ -71,7 +71,7 @@ function UserRow({
   pending: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-4">
+    <div className="flex items-center justify-between p-4 transition-colors hover:bg-canvas">
       <div className="flex items-center gap-3">
         <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">
           {user.email.slice(0, 1).toUpperCase()}

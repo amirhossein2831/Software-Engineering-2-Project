@@ -91,9 +91,17 @@ Seat    { ID, EventID(fk), SectorID(fk), RowLabel, Number }   // layout only; st
 ```
 
 **External API (REST):**
-- `GET /events?genre=&date=&location=&available=` → filtered search (Redis-cached)
+- `GET /events?genre=&location=` → published-event search; add `?include_drafts=true` for the organizer/admin listing that also returns drafts
 - `GET /events/{id}` → event detail + seat-map layout + pricing
-- **Organizer/admin:** `POST /venues`, `POST /events`, `POST /events/{id}/publish`, `POST /events/{id}/pricing`
+- `GET /venues` / `GET /venues/{id}` → venues with their sectors
+- **Organizer/admin (writes, role-gated at the gateway):**
+  - Venues: `POST /venues`, `PATCH /venues/{id}`, `DELETE /venues/{id}` (blocked with `409` while any event references it), `POST /venues/{id}/sectors`, `DELETE /venues/{id}/sectors/{sectorId}`
+  - Events: `POST /events`, `PATCH /events/{id}` (details only — the venue is fixed once seats are snapshotted), `DELETE /events/{id}` (drafts only; `409` once published), `POST /events/{id}/publish`, `POST /events/{id}/pricing`
+
+**Delete safety rails (enforced server-side):** a venue can be removed only when no
+event points at it (its sectors cascade); an event can be removed only while it is a
+`draft` (its seats + pricing cascade), so anything already published — and therefore
+potentially holding orders/tickets — can never be destroyed from the catalog.
 
 **Internal API (gRPC):**
 - `GetEvent(id)`, `GetSeatMap(event_id)`, `GetPricing(event_id, seat_ids)` (called by Reservation/Checkout).

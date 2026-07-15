@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { Event, EventDetail, Venue } from "@/lib/types";
+import type { Event, EventDetail, Venue, Sector } from "@/lib/types";
 
 export interface EventFilters {
   genre?: string;
@@ -14,6 +14,29 @@ export function listEvents(filters: EventFilters = {}) {
   return apiFetch<{ events: Event[] }>(`/events${qs ? `?${qs}` : ""}`, {
     auth: false,
   });
+}
+
+export function listAllEvents() {
+  return apiFetch<{ events: Event[] }>("/events?include_drafts=true", {
+    auth: false,
+  });
+}
+
+export function updateEvent(
+  id: string,
+  input: {
+    title: string;
+    description: string;
+    genre: string;
+    location: string;
+    starts_at: string;
+  },
+) {
+  return apiFetch<Event>(`/events/${id}`, { method: "PATCH", body: input });
+}
+
+export function deleteEvent(id: string) {
+  return apiFetch<void>(`/events/${id}`, { method: "DELETE" });
 }
 
 export function getEvent(id: string) {
@@ -45,6 +68,10 @@ export function setPricing(
   });
 }
 
+export function listVenues() {
+  return apiFetch<{ venues: Venue[] }>("/venues", { auth: false });
+}
+
 export function createVenue(input: { name: string; address: string }) {
   return apiFetch<Venue>("/venues", { method: "POST", body: input });
 }
@@ -53,12 +80,29 @@ export function getVenue(id: string) {
   return apiFetch<Venue>(`/venues/${id}`);
 }
 
+export function updateVenue(
+  id: string,
+  input: { name: string; address: string },
+) {
+  return apiFetch<Venue>(`/venues/${id}`, { method: "PATCH", body: input });
+}
+
+export function deleteVenue(id: string) {
+  return apiFetch<void>(`/venues/${id}`, { method: "DELETE" });
+}
+
 export function addSector(
   venueId: string,
   input: { name: string; row_count: number; col_count: number },
 ) {
-  return apiFetch(`/venues/${venueId}/sectors`, {
+  return apiFetch<Sector>(`/venues/${venueId}/sectors`, {
     method: "POST",
     body: input,
+  });
+}
+
+export function deleteSector(venueId: string, sectorId: string) {
+  return apiFetch<void>(`/venues/${venueId}/sectors/${sectorId}`, {
+    method: "DELETE",
   });
 }

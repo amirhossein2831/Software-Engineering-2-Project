@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -9,6 +10,11 @@ import (
 
 	"catalog/internal/model"
 	"catalog/internal/repository"
+)
+
+var (
+	ErrVenueInUse    = errors.New("venue has events")
+	ErrEventNotDraft = errors.New("event is not a draft")
 )
 
 type CatalogService struct {
@@ -29,6 +35,32 @@ func (s *CatalogService) CreateVenue(ctx context.Context, name, address string, 
 
 func (s *CatalogService) GetVenue(ctx context.Context, id uuid.UUID) (*model.Venue, error) {
 	return s.repo.GetVenue(ctx, id)
+}
+
+func (s *CatalogService) ListVenues(ctx context.Context) ([]model.Venue, error) {
+	return s.repo.ListVenues(ctx)
+}
+
+func (s *CatalogService) UpdateVenue(ctx context.Context, id uuid.UUID, name, address string) (*model.Venue, error) {
+	if err := s.repo.UpdateVenue(ctx, id, name, address); err != nil {
+		return nil, err
+	}
+	return s.repo.GetVenue(ctx, id)
+}
+
+func (s *CatalogService) DeleteVenue(ctx context.Context, id uuid.UUID) error {
+	n, err := s.repo.CountEventsByVenue(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrVenueInUse
+	}
+	return s.repo.DeleteVenue(ctx, id)
+}
+
+func (s *CatalogService) DeleteSector(ctx context.Context, venueID, sectorID uuid.UUID) error {
+	return s.repo.DeleteSector(ctx, venueID, sectorID)
 }
 
 func (s *CatalogService) AddSector(ctx context.Context, venueID uuid.UUID, name string, rows, cols int) (*model.Sector, error) {
@@ -77,6 +109,39 @@ func (s *CatalogService) CreateEvent(ctx context.Context, in CreateEventInput) (
 
 func (s *CatalogService) PublishEvent(ctx context.Context, id uuid.UUID) error {
 	return s.repo.UpdateEventStatus(ctx, id, model.StatusPublished)
+}
+
+type UpdateEventInput struct {
+	Title       string
+	Description string
+	Genre       string
+	Location    string
+	StartsAt    time.Time
+}
+
+func (s *CatalogService) UpdateEvent(ctx context.Context, id uuid.UUID, in UpdateEventInput) (*model.Event, error) {
+	fields := map[string]any{
+		"title":       in.Title,
+		"description": in.Description,
+		"genre":       in.Genre,
+		"location":    in.Location,
+		"starts_at":   in.StartsAt,
+	}
+	if err := s.repo.UpdateEvent(ctx, id, fields); err != nil {
+		return nil, err
+	}
+	return s.repo.GetEvent(ctx, id)
+}
+
+func (s *CatalogService) DeleteEvent(ctx context.Context, id uuid.UUID) error {
+	e, err := s.repo.GetEvent(ctx, id)
+	if err != nil {
+		return err
+	}
+	if e.Status != model.StatusDraft {
+		return ErrEventNotDraft
+	}
+	return s.repo.DeleteEvent(ctx, id)
 }
 
 func (s *CatalogService) SetPricing(ctx context.Context, eventID, sectorID uuid.UUID, amount int64, currency string) (*model.Pricing, error) {

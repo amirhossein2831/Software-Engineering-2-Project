@@ -11,18 +11,19 @@ export interface Tokens {
   refresh_token: string;
 }
 
-export interface Venue {
-  id: string;
-  name: string;
-  address: string;
-}
-
 export interface Sector {
   id: string;
   venue_id: string;
   name: string;
   row_count: number;
   col_count: number;
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  sectors?: Sector[];
 }
 
 export type EventStatus = "draft" | "published";

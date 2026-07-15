@@ -2,7 +2,7 @@ import { apiFetch } from "./client";
 import type { Reservation, SeatState } from "@/lib/types";
 
 export function seatStates(eventId: string) {
-  return apiFetch<{ seats: SeatState[] }>(`/events/${eventId}/seats`, {
+  return apiFetch<{ seats: SeatState[] }>(`/seatmap/${eventId}`, {
     auth: false,
   });
 }
